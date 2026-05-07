@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 import random
 from collections import deque
-from model import DQN, DuelingDQN
+from model import DQN, DuelingDQN, RainbowDQN
 from Gridworld import Gridworld
 
 class ReplayBuffer:
@@ -43,7 +43,10 @@ class GridWorldAgent(pl.LightningModule):
         self.action_set = {0: 'u', 1: 'd', 2: 'l', 3: 'r'}
         
         # Select Architecture
-        if 'dueling' in self.algo:
+        if self.algo == 'rainbow':
+            self.main_net = RainbowDQN()
+            self.target_net = RainbowDQN()
+        elif 'dueling' in self.algo:
             self.main_net = DuelingDQN()
             self.target_net = DuelingDQN()
         else:
@@ -89,14 +92,25 @@ class GridWorldAgent(pl.LightningModule):
         return self.main_net(x)
 
     def get_action(self, state):
-        if random.random() < self.epsilon:
-            return random.randint(0, 3)
-        else:
+        if self.algo == 'rainbow':
+            # Rainbow uses Noisy Nets for exploration, no epsilon-greedy
             with torch.no_grad():
                 qval = self.main_net(state)
             return torch.argmax(qval, dim=1).item()
+        else:
+            if random.random() < self.epsilon:
+                return random.randint(0, 3)
+            else:
+                with torch.no_grad():
+                    qval = self.main_net(state)
+                return torch.argmax(qval, dim=1).item()
 
     def training_step(self, batch, batch_idx):
+        if self.algo == 'rainbow':
+            # Reset noise before picking an action and calculating TD target
+            self.main_net.reset_noise()
+            self.target_net.reset_noise()
+            
         # 1. Step the environment
         action_idx = self.get_action(self.state)
         action = self.action_set[action_idx]
@@ -118,11 +132,11 @@ class GridWorldAgent(pl.LightningModule):
             self.env = Gridworld(size=4, mode=self.mode)
             self.state = get_state(self.env)
             
-        # Decay epsilon
-        if self.epsilon > self.epsilon_end:
+        # Decay epsilon (Not needed for Rainbow)
+        if self.algo != 'rainbow' and self.epsilon > self.epsilon_end:
             self.epsilon -= self.epsilon_decay
             self.epsilon = max(self.epsilon, self.epsilon_end)
-        self.log('epsilon', self.epsilon, prog_bar=True)
+            self.log('epsilon', self.epsilon, prog_bar=True)
             
         # 2. Sample from buffer and calculate loss
         minibatch = self.replay.sample(self.batch_size)
@@ -134,7 +148,7 @@ class GridWorldAgent(pl.LightningModule):
         
         # Calculate Q values
         with torch.no_grad():
-            if 'double' in self.algo:
+            if 'double' in self.algo or self.algo == 'rainbow':
                 # Double DQN Logic
                 next_actions = torch.argmax(self.main_net(state2_batch), dim=1).unsqueeze(1)
                 next_q_values = self.target_net(state2_batch).gather(1, next_actions).squeeze(1)

@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('--mode', type=str, default='static', choices=['static', 'player', 'random'],
                         help="Mode for GridWorld: static, player, or random")
     parser.add_argument('--algo', type=str, default='double_dueling_dqn', 
-                        choices=['dqn', 'double_dqn', 'dueling_dqn', 'double_dueling_dqn'],
+                        choices=['dqn', 'double_dqn', 'dueling_dqn', 'double_dueling_dqn', 'rainbow'],
                         help="DQN Algorithm variant to use")
     parser.add_argument('--steps', type=int, default=20000, help="Number of environmental steps to train")
     args = parser.parse_args()

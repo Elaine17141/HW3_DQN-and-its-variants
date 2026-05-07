@@ -17,7 +17,7 @@ pip install torch numpy matplotlib pytorch-lightning
 
 **參數說明：**
 * `--mode`: 選擇 GridWorld 模式 (`static`, `player`, `random`)
-* `--algo`: 選擇演算法 (`dqn`, `double_dqn`, `dueling_dqn`, `double_dueling_dqn`)
+* `--algo`: 選擇演算法 (`dqn`, `double_dqn`, `dueling_dqn`, `double_dueling_dqn`, `rainbow`)
 * `--steps`: 設定與環境互動的總訓練步數 (預設 `20000`)
 
 **執行範例：**
@@ -30,6 +30,9 @@ python train.py --mode player --algo double_dqn --steps 20000
 
 # HW3-3: 執行結合所有技巧的最佳演算法於 random 模式
 python train.py --mode random --algo double_dueling_dqn --steps 50000
+
+# HW3-4 (加分題): 執行 Rainbow DQN 於 random 模式
+python train.py --mode random --algo rainbow --steps 50000
 ```
 訓練完成後，程式將自動把模型權重存為 `model_[algo]_[mode]_pl.pth`，並繪製出 Reward 變化趨勢圖保存為 `reward_plot_[algo]_[mode]_pl.png`。
 
@@ -77,3 +80,14 @@ python train.py --mode random --algo double_dueling_dqn --steps 50000
 * **Epsilon Decay ($\epsilon$-greedy 衰減策略)**：將探索率 $\epsilon$ 的衰減封裝在訓練的每個 Step 中。設定 $\epsilon$ 從 1.0 開始，隨著訓練的 step 線性衰減至 0.1。這保證了模型在隨機環境的初期有充分的勇氣去探索每種可能的地圖組合，而在後期則專注於收斂並利用最優策略。
 
 **總結**：結合 Double Dueling DQN 與上述 Training Tips，本專案完美克服了 `random` 模式的環境動態性，展現出高度的收斂穩定性。
+
+---
+
+## 🌈 HW3-4 (加分題): Rainbow DQN for Random Mode
+
+作為加分項，我們實作了精簡但強大的 **Rainbow DQN** 變體，結合了前述的 Double DQN、Dueling DQN，並引入了 Rainbow 的核心探索技術：**Noisy Networks (噪音網路)**。
+
+### Noisy Networks for Exploration
+* **問題描述**：傳統的 $\epsilon$-greedy 策略依賴完全隨機的行為來探索環境，這在複雜或狀態稀疏的地圖中效率低下。
+* **改良方案**：在 `model.py` 中實作了 `NoisyLinear` 類別，為神經網路的權重注入了參數化的因式分解高斯噪音 (Factorized Gaussian Noise)。
+* **實作細節**：Agent 不再需要 $\epsilon$ 衰減，在整個訓練過程中，神經網路本身就具備內建的隨機探索能力。透過 `reset_noise()` 方法，模型能在維持確定性行為（對既有策略的利用）與隨機行為（探索未知狀態）之間達成完美的平衡，有效解決 `random` 模式下陷入死胡同的問題。
