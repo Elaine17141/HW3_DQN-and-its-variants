@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 import random
 from collections import deque
-from model import DuelingDQN
+from model import DQN, DuelingDQN
 from Gridworld import Gridworld
 
 class ReplayBuffer:
@@ -26,11 +26,12 @@ def get_state(game):
     state = torch.from_numpy(state_).float()
     return state
 
-class DoubleDuelingDQNAgent(pl.LightningModule):
-    def __init__(self, mode='static', lr=1e-3, gamma=0.9, epsilon_start=1.0, epsilon_end=0.1, epsilon_decay_steps=10000, mem_size=1000, batch_size=200, target_update_freq=50):
+class GridWorldAgent(pl.LightningModule):
+    def __init__(self, mode='static', algo='double_dueling_dqn', lr=1e-3, gamma=0.9, epsilon_start=1.0, epsilon_end=0.1, epsilon_decay_steps=10000, mem_size=1000, batch_size=200, target_update_freq=50):
         super().__init__()
         self.save_hyperparameters()
         self.mode = mode
+        self.algo = algo.lower()
         self.lr = lr
         self.gamma = gamma
         self.epsilon = epsilon_start
@@ -41,13 +42,14 @@ class DoubleDuelingDQNAgent(pl.LightningModule):
         
         self.action_set = {0: 'u', 1: 'd', 2: 'l', 3: 'r'}
         
-        # Double DQN: Main and Target networks
-        # Concept: Standard Q-learning is prone to overestimation bias because it uses the 
-        # same network (max Q) to both select the best action and evaluate that action's Q-value.
-        # This leads to inflated Q-values, causing suboptimal policies.
-        # Double DQN solves this by decoupling action selection (Main Net) and evaluation (Target Net).
-        self.main_net = DuelingDQN()
-        self.target_net = DuelingDQN()
+        # Select Architecture
+        if 'dueling' in self.algo:
+            self.main_net = DuelingDQN()
+            self.target_net = DuelingDQN()
+        else:
+            self.main_net = DQN()
+            self.target_net = DQN()
+            
         self.target_net.load_state_dict(self.main_net.state_dict())
         self.target_net.eval()
         
@@ -62,7 +64,7 @@ class DoubleDuelingDQNAgent(pl.LightningModule):
         self.moves = 0
         self.max_moves = 50
         
-        # Pre-populate replay buffer so we can sample immediately
+        # Pre-populate replay buffer
         self.populate_buffer(self.batch_size)
 
     def populate_buffer(self, steps):
@@ -116,7 +118,7 @@ class DoubleDuelingDQNAgent(pl.LightningModule):
             self.env = Gridworld(size=4, mode=self.mode)
             self.state = get_state(self.env)
             
-        # Decay epsilon (Epsilon-greedy decay strategy)
+        # Decay epsilon
         if self.epsilon > self.epsilon_end:
             self.epsilon -= self.epsilon_decay
             self.epsilon = max(self.epsilon, self.epsilon_end)
@@ -130,18 +132,17 @@ class DoubleDuelingDQNAgent(pl.LightningModule):
         state2_batch = torch.cat([s2 for (s1, a, r, s2, d) in minibatch])
         done_batch = torch.tensor([d for (s1, a, r, s2, d) in minibatch], dtype=torch.float32)
         
-        # Double DQN Logic
+        # Calculate Q values
         with torch.no_grad():
-            # Step 1: Main network chooses the best action for the next state
-            # argmax_a Q_main(s', a)
-            next_actions = torch.argmax(self.main_net(state2_batch), dim=1).unsqueeze(1)
-            
-            # Step 2: Target network evaluates the Q-value of the chosen action
-            # Q_target(s', argmax_a Q_main(s', a))
-            next_q_values = self.target_net(state2_batch).gather(1, next_actions).squeeze(1)
+            if 'double' in self.algo:
+                # Double DQN Logic
+                next_actions = torch.argmax(self.main_net(state2_batch), dim=1).unsqueeze(1)
+                next_q_values = self.target_net(state2_batch).gather(1, next_actions).squeeze(1)
+            else:
+                # Standard Naive DQN Logic
+                next_q_values = torch.max(self.target_net(state2_batch), dim=1)[0]
         
-        # Target Q value calculation (TD Target)
-        # Y = R + gamma * Q_target(s', a') if not done
+        # Target Q value
         Y = reward_batch + self.gamma * ((1 - done_batch) * next_q_values)
         
         # Current Q value

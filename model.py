@@ -1,6 +1,23 @@
 import torch
 import torch.nn as nn
 
+class DQN(nn.Module):
+    def __init__(self, input_dim=64, hidden1=150, hidden2=100, output_dim=4):
+        """
+        Standard Naive DQN Network architecture as required for HW3-1.
+        """
+        super(DQN, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, hidden1),
+            nn.ReLU(),
+            nn.Linear(hidden1, hidden2),
+            nn.ReLU(),
+            nn.Linear(hidden2, output_dim)
+        )
+        
+    def forward(self, x):
+        return self.model(x)
+
 class DuelingDQN(nn.Module):
     def __init__(self, input_dim=64, hidden1=150, hidden2=100, output_dim=4):
         """
