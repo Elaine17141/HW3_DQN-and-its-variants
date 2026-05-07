@@ -1,92 +1,79 @@
-# 深度強化學習 - HW3 
-本專案為深度強化學習的第三次作業 (HW3) 實作，包含了解決傳統 Q-learning 容易產生的「高估問題」的 Double DQN，以及能夠更精準評估狀態價值的 Dueling DQN 架構。整體訓練流程已採用 PyTorch Lightning 進行重構，以獲得更穩定與工程化的訓練體驗。
+# 深度強化學習 - HW3: DQN and its Variants
 
-## 執行環境與如何運行
+本專案為深度強化學習第三次作業 (HW3) 實作。基於 [Deep Reinforcement Learning in Action](https://github.com/DeepReinforcementLearning/DeepReinforcementLearningInAction/tree/master) 提供的 GridWorld 環境，逐步實現從最基礎的 Naive DQN 到各種改良架構（Double DQN, Dueling DQN），並全面使用 **PyTorch Lightning** 進行現代化與工程化的重構，以完成隨機環境下的高難度訓練。
 
-### 環境依賴
-* Python 3.8+
-* PyTorch
-* PyTorch Lightning
-* NumPy
-* Matplotlib
+---
 
-您可以直接透過以下指令安裝缺少的依賴套件：
+## 🛠️ 執行環境與如何運行 (Setup & How to Run)
+
+### 依賴套件 (Dependencies)
+本專案採用 Python 3.8+ 與 PyTorch Lightning 開發，請確保您安裝了以下套件：
 ```bash
 pip install torch numpy matplotlib pytorch-lightning
 ```
 
-### 如何執行代碼
-我們的訓練腳本支援三種 GridWorld 模式：`static`、`player` 以及 `random`。
-您可以透過命令列參數 `--mode` 指定訓練的模式，以及透過 `--steps` 指定要互動的環境總步數。
+### 執行方式 (How to Run)
+訓練腳本 `train.py` 已經高度封裝，您可以透過改變命令列參數來自由組合「演算法」與「環境難度」。
 
-1. **Static 模式訓練 (預設)**：
-```bash
-python train.py --mode static --steps 20000
-```
-2. **Player 模式訓練**：
-```bash
-python train.py --mode player --steps 20000
-```
-3. **Random 模式訓練**：
-```bash
-python train.py --mode random --steps 50000
-```
+**參數說明：**
+* `--mode`: 選擇 GridWorld 模式 (`static`, `player`, `random`)
+* `--algo`: 選擇演算法 (`dqn`, `double_dqn`, `dueling_dqn`, `double_dueling_dqn`)
+* `--steps`: 設定與環境互動的總訓練步數 (預設 `20000`)
 
-訓練結束後，程式會自動：
-1. 儲存模型權重為 `dqn_model_[mode]_pl.pth`。
-2. 產生並儲存該模式的 Reward 變化圖（包含原始 Reward 與 50 個 Episode 的移動平均線）至 `reward_plot_[mode]_pl.png`。
+**執行範例：**
+```bash
+# HW3-1: 執行基礎 DQN 於 static 模式
+python train.py --mode static --algo dqn --steps 10000
+
+# HW3-2: 執行 Double DQN 於 player 模式
+python train.py --mode player --algo double_dqn --steps 20000
+
+# HW3-3: 執行結合所有技巧的最佳演算法於 random 模式
+python train.py --mode random --algo double_dueling_dqn --steps 50000
+```
+訓練完成後，程式將自動把模型權重存為 `model_[algo]_[mode]_pl.pth`，並繪製出 Reward 變化趨勢圖保存為 `reward_plot_[algo]_[mode]_pl.png`。
 
 ---
 
-## 演算法理論與實作說明
+## 🧠 HW3-1: Naive DQN for Static Mode [Understanding Report]
 
-本專案將標準的 DQN 升級為 **Double Dueling DQN**，具體解決了傳統 DQN 的幾項痛點：
-
-### 1. 傳統 Q-learning 的高估問題 (Overestimation Bias) 與 Double DQN
-**問題描述：** 
-傳統 DQN 在計算 TD Target 時，會使用**相同的網路**來選擇下一步最佳動作與評估該動作的 Q-Value：
-$Y = R + \gamma \max_a Q(s', a; \theta)$
-由於 Q-Value 中包含了神經網路估計的誤差，當使用 $\max$ 操作時，這些隨機誤差往往會被往正向放大。隨著迭代進行，這會導致模型出現嚴重的高估現象（Overestimation），進而學習到次優的策略。
-
-**Double DQN 解決方案：**
-將「選擇動作」與「評估價值」解耦（Decoupling）。我們實作了兩個網路：`Main Network` 與 `Target Network`。
-* **動作選擇**：交由 `Main Network` 決定（找到具有最大 Q-Value 的動作）。
-* **價值評估**：利用 `Target Network` 計算出該動作的 Q-Value。
-$Y = R + \gamma Q_{target}(s', \arg\max_a Q_{main}(s', a; \theta_{main}); \theta_{target})$
-這樣的解耦能大幅度減少高估的風險，讓模型的收斂更為穩定。
-
-### 2. 狀態價值評估與 Dueling DQN
-**問題描述：**
-傳統的 DQN 只有一個流（Stream）來輸出所有可能動作的 $Q(s,a)$。但在許多狀態下，不管採取何種行動對未來的收益影響並不大（例如遠離陷阱的安全狀態）。要求模型為每一個 $(s,a)$ pair 精準預估是不具效率的。
-
-**Dueling DQN 解決方案：**
-我們在 `model.py` 中將神經網路的最後一層拆分為兩個流（Streams）：
-1. **Value Stream $V(s)$**：單獨評估處於狀態 $s$ 有多好。
-2. **Advantage Stream $A(s,a)$**：評估在狀態 $s$ 下採取行動 $a$ 的相對優勢。
-
-最後透過聚合層結合這兩個流：
-$Q(s, a) = V(s) + \left( A(s, a) - \frac{1}{|\mathcal{A}|}\sum_{a'}A(s, a') \right)$
-減去平均值的操作確保了 $A$ 的均值為 0，這解決了 $V$ 與 $A$ 的不可識別性（Unidentifiability）問題，讓模型能夠獨立且更精準地學習到狀態的基底價值。
-
-### 3. 穩定性優化 (Stability)
-* **PyTorch Lightning 重構**：將 Agent 與訓練邏輯封裝在 `pl.LightningModule` 中，標準化 `training_step` 的過程。
-* **Gradient Clipping**：在 `Trainer` 中設定 `gradient_clip_val=1.0`，有效防止梯度爆炸，確保 Loss 下降更平穩。
-* **Epsilon-greedy 隨機率遞減策略**：探索率 $\epsilon$ 從 1.0 開始，隨著訓練的 step 線性衰減至 0.1，使 Agent 前期能充分探索環境，後期則偏向利用已知最優策略。
+### 基本原理與實作
+在最基礎的 `static` 模式中，陷阱與目標的位置是固定的，這是一個較為簡單的環境。我們在此實作了標準的 **Naive DQN** 以及 **Experience Replay Buffer**。
+* **Naive DQN**：使用單一的 Q-Network 來預測每個動作的未來價值（Q-Value）。在更新時，利用同一個網路找出最高 Q-Value 的動作來計算 TD Target。
+* **Experience Replay Buffer (經驗回放緩衝區)**：如果 Agent 只學習最新的一筆經驗，資料會具有高度的時間相關性，導致神經網路學習不穩定（Catastrophic Forgetting）。因此我們實作了 `ReplayBuffer` 類別，讓 Agent 先將走過的經驗 $(s, a, r, s', done)$ 存入 Buffer 中，訓練時再隨機抽樣 (Sample) 出一個 Batch 進行梯度下降，有效打破資料的相關性並提升資料利用率。
 
 ---
 
-## 實驗結果分析
+## ⚖️ HW3-2: Enhanced DQN Variants for Player Mode 
 
-根據我們在測試環境中收集到的實驗結果，以下是針對不同架構在 `player` 模式下的表現比較：
+當環境提升至 `player` 模式時，玩家的初始位置與目標會產生變化，傳統 DQN 開始暴露其缺陷。我們為此實作並比較了兩種改良架構。
 
-### 1. Standard DQN 的表現
-在初期的實驗中，標準 DQN 雖然能夠學會抵達目標，但在 `player` 模式下，由於玩家的初始位置與陷阱（Pitfall）的分佈影響，容易陷入高估某幾個特定危險邊緣狀態的 Q-Value。這導致模型即使學到了策略，Reward 的震盪依然很大，時常在收斂後又「忘記」正確策略而掉入陷阱，學習曲線呈現非常不穩定的劇烈抖動。
+### 1. Double DQN 
+* **改良核心**：解決 Q-learning 的 **高估問題 (Overestimation Bias)**。
+* **原理**：傳統 DQN 在計算 TD Target: $Y = R + \gamma \max_a Q(s', a; \theta)$ 時，總是樂觀地選擇最大值。因為神經網路本來就存在估計誤差，這種操作會使正向誤差被不斷放大，導致 Q 值的嚴重高估。Double DQN 引入了 `Target Network` 將「動作選擇」與「價值評估」解耦：
+  * **Main Network** 負責選出下個狀態的最好動作：$a^* = \arg\max_a Q_{main}(s', a)$
+  * **Target Network** 負責評估該動作的真實價值：$Q_{target}(s', a^*)$
+* **結果表現**：在 `player` 模式中，Double DQN 使得 Reward 曲線大幅穩定，不再發生原本 DQN 在收斂後突然因為過度高估某些危險狀態的 Q 值而崩潰掉入陷阱的情況。
 
-### 2. Double DQN 的表現
-加入 Target Network 並解耦之後（Double DQN），模型的穩定性有了顯著的提升。高估問題（Overestimation）被大幅壓制。從 Reward 圖中可以看到，Double DQN 相較於標準 DQN，達到平均正向收益所需的 Episode 數量更少，且收斂後的突發性斷崖式失敗大幅減少。它能夠確實分辨出通往目標的安全路徑。
+### 2. Dueling DQN
+* **改良核心**：更精準的 **狀態價值評估**。
+* **原理**：在 GridWorld 許多安全狀態中，無論採取何種動作，都不會立刻產生巨大的風險或獎勵。傳統 DQN 浪費算力去精準估計每一個動作的 Q 值。Dueling DQN 將神經網路的最後一層拆分為兩個流（Streams）：
+  1. **Value Stream $V(s)$**：評估「單純待在狀態 $s$ 有多安全/多好」。
+  2. **Advantage Stream $A(s,a)$**：評估「在狀態 $s$ 下，採取動作 $a$ 比其他動作好多少」。
+  我們透過公式 $Q(s, a) = V(s) + \left( A(s, a) - \frac{1}{|\mathcal{A}|}\sum_{a'}A(s, a') \right)$ 來聚合兩者，減去均值確保了網路的穩定訓練（解決不可識別性問題）。
+* **結果表現**：在 `player` 模式下，Dueling DQN 的收斂速度明顯快於普通 DQN。因為它能夠獨立學習到「遠離坑洞」的基礎狀態價值 $V(s)$，使智能體即使在未嘗試過所有動作的情況下，也能迅速辨識危險。
 
-### 3. Double Dueling DQN 的表現 (最佳表現)
-將網路結構升級為 Dueling Architecture 是提升表現的關鍵一步。在 GridWorld 中，大部分的安全狀態無論採取上下左右都不會立即致死（除非走進陷阱）。Dueling DQN 的 Value Stream $V(s)$ 可以很有效地學習到「當前狀態的安全性」，而 Advantage Stream 則專注於「哪一步能更快靠近目標」。
+---
 
-**綜合結論**：
-結合了 Double DQN 與 Dueling DQN 後的智能體，在 `player` 模式下的收斂速度最快，Reward 曲線的 50-epoch 移動平均線也是最快且最平滑地爬升至接近滿分（+10）的水準。配合 Gradient Clipping，進一步削弱了 TD Error 在面臨大額懲罰時所產生的過大梯度，使整個神經網路在訓練過程中的容錯率達到最高。
+## 🔁 HW3-3: Enhance DQN for Random Mode WITH Training Tips
+
+在最高難度的 `random` 模式中，每一次 Episode 不僅起點改變，連坑洞與目標點也會隨機重置。為了應對如此複雜的環境，我們做出了架構上的徹底升級。
+
+### 1. 導入 PyTorch Lightning 框架
+我們摒棄了傳統冗長的 `while` 迴圈，將神經網路、環境互動、Optimizer 與 Target Network 的更新邏輯全部整合進 `pl.LightningModule`。透過定義明確的 `training_step`，程式碼不僅易讀性大增，也減少了人為 Bug，更具備現代工程化的擴展性。
+
+### 2. Training Tips (穩定學習技巧)
+* **Gradient Clipping (梯度裁剪)**：在隨機模式中，碰到隨機生成的死局陷阱時會產生巨大的 TD Error 負回饋。我們在 Lightning Trainer 中設置了 `gradient_clip_val=1.0`，強制限制梯度的最大範數，避免產生梯度爆炸導致模型崩潰。
+* **Epsilon Decay ($\epsilon$-greedy 衰減策略)**：將探索率 $\epsilon$ 的衰減封裝在訓練的每個 Step 中。設定 $\epsilon$ 從 1.0 開始，隨著訓練的 step 線性衰減至 0.1。這保證了模型在隨機環境的初期有充分的勇氣去探索每種可能的地圖組合，而在後期則專注於收斂並利用最優策略。
+
+**總結**：結合 Double Dueling DQN 與上述 Training Tips，本專案完美克服了 `random` 模式的環境動態性，展現出高度的收斂穩定性。
