@@ -45,6 +45,20 @@ python train.py --mode random --algo rainbow --steps 50000
 * **Naive DQN**：使用單一的 Q-Network 來預測每個動作的未來價值（Q-Value）。在更新時，利用同一個網路找出最高 Q-Value 的動作來計算 TD Target。
 * **Experience Replay Buffer (經驗回放緩衝區)**：如果 Agent 只學習最新的一筆經驗，資料會具有高度的時間相關性，導致神經網路學習不穩定（Catastrophic Forgetting）。因此我們實作了 `ReplayBuffer` 類別，讓 Agent 先將走過的經驗 $(s, a, r, s', done)$ 存入 Buffer 中，訓練時再隨機抽樣 (Sample) 出一個 Batch 進行梯度下降，有效打破資料的相關性並提升資料利用率。
 
+### 訓練結果 (Training Results)
+以下為 Naive DQN 在不同模式下的訓練表現比較：
+
+**1. Static Mode**
+![Naive DQN Static](https://github.com/user-attachments/assets/8ab52a2b-edfd-45ae-b9dc-fd84812e106d)
+
+**2. Player Mode**
+![Naive DQN Player](https://github.com/user-attachments/assets/3c177642-c9cb-4122-a006-ad1ae780837c)
+
+**3. Random Mode**
+![Naive DQN Random](https://github.com/user-attachments/assets/50be9bb5-744e-4472-b19c-de1eb24b6201)
+
+*(註：若本地有產生 `reward_plot_static_pl.png` 亦可參考該圖)*
+
 ---
 
 ## ⚖️ HW3-2: Enhanced DQN Variants for Player Mode 
@@ -58,6 +72,10 @@ python train.py --mode random --algo rainbow --steps 50000
   * **Target Network** 負責評估該動作的真實價值：$Q_{target}(s', a^*)$
 * **結果表現**：在 `player` 模式中，Double DQN 使得 Reward 曲線大幅穩定，不再發生原本 DQN 在收斂後突然因為過度高估某些危險狀態的 Q 值而崩潰掉入陷阱的情況。
 
+**Double DQN in Player mode**
+
+![Double DQN Player](https://github.com/user-attachments/assets/81154ac8-cd08-4e34-84ef-11ce1018659e)
+
 ### 2. Dueling DQN
 * **改良核心**：更精準的 **狀態價值評估**。
 * **原理**：在 GridWorld 許多安全狀態中，無論採取何種動作，都不會立刻產生巨大的風險或獎勵。傳統 DQN 浪費算力去精準估計每一個動作的 Q 值。Dueling DQN 將神經網路的最後一層拆分為兩個流（Streams）：
@@ -65,6 +83,10 @@ python train.py --mode random --algo rainbow --steps 50000
   2. **Advantage Stream $A(s,a)$**：評估「在狀態 $s$ 下，採取動作 $a$ 比其他動作好多少」。
   我們透過公式 $Q(s, a) = V(s) + \left( A(s, a) - \frac{1}{|\mathcal{A}|}\sum_{a'}A(s, a') \right)$ 來聚合兩者，減去均值確保了網路的穩定訓練（解決不可識別性問題）。
 * **結果表現**：在 `player` 模式下，Dueling DQN 的收斂速度明顯快於普通 DQN。因為它能夠獨立學習到「遠離坑洞」的基礎狀態價值 $V(s)$，使智能體即使在未嘗試過所有動作的情況下，也能迅速辨識危險。
+
+**Dueling DQN in Player mode**
+
+![Dueling DQN Player](https://github.com/user-attachments/assets/0617d91b-dbc0-4e0e-8884-3ada9a0b9b57)
 
 ---
 
@@ -80,6 +102,18 @@ python train.py --mode random --algo rainbow --steps 50000
 * **Epsilon Decay ($\epsilon$-greedy 衰減策略)**：將探索率 $\epsilon$ 的衰減封裝在訓練的每個 Step 中。設定 $\epsilon$ 從 1.0 開始，隨著訓練的 step 線性衰減至 0.1。這保證了模型在隨機環境的初期有充分的勇氣去探索每種可能的地圖組合，而在後期則專注於收斂並利用最優策略。
 
 **總結**：結合 Double Dueling DQN 與上述 Training Tips，本專案完美克服了 `random` 模式的環境動態性，展現出高度的收斂穩定性。
+
+**DuelingDQN + Target Network + Double DQN + Experience Replay Buffer + Epsilon-Greedy in PyTorch Lightning (Random Mode)**
+
+![Lightning Dueling DQN](https://github.com/user-attachments/assets/f1847258-e1dd-43d9-ae31-bc9d8f1efc6c)
+
+**引入防撞牆機制後的 loss 收斂圖**
+
+![Loss](https://github.com/user-attachments/assets/7d839774-79fb-4d05-901a-9af27d1a0217)
+
+**勝率達 98.5% 的對局統計圖**
+
+![Win rate](https://github.com/user-attachments/assets/61597840-9d43-4130-83c3-cd78f2ed7088)
 
 ---
 
