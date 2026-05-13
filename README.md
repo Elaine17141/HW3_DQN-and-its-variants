@@ -49,13 +49,13 @@ python train.py --mode random --algo rainbow --steps 50000
 以下為 Naive DQN 在不同模式下的訓練表現比較：
 
 **1. Static Mode**
-![Naive DQN Static](https://github.com/user-attachments/assets/8ab52a2b-edfd-45ae-b9dc-fd84812e106d)
+![Naive DQN Static](reward_plot_dqn_static_pl.png)
 
 **2. Player Mode**
-![Naive DQN Player](https://github.com/user-attachments/assets/3c177642-c9cb-4122-a006-ad1ae780837c)
+![Naive DQN Player](reward_plot_dqn_player_pl.png)
 
 **3. Random Mode**
-![Naive DQN Random](https://github.com/user-attachments/assets/50be9bb5-744e-4472-b19c-de1eb24b6201)
+![Naive DQN Random](reward_plot_dqn_random_pl.png)
 
 *(註：若本地有產生 `reward_plot_static_pl.png` 亦可參考該圖)*
 
@@ -74,7 +74,7 @@ python train.py --mode random --algo rainbow --steps 50000
 
 **Double DQN in Player mode**
 
-![Double DQN Player](https://github.com/user-attachments/assets/81154ac8-cd08-4e34-84ef-11ce1018659e)
+![Double DQN Player](reward_plot_double_dqn_player_pl.png)
 
 ### 2. Dueling DQN
 * **改良核心**：更精準的 **狀態價值評估**。
@@ -86,7 +86,7 @@ python train.py --mode random --algo rainbow --steps 50000
 
 **Dueling DQN in Player mode**
 
-![Dueling DQN Player](https://github.com/user-attachments/assets/0617d91b-dbc0-4e0e-8884-3ada9a0b9b57)
+![Dueling DQN Player](reward_plot_dueling_dqn_player_pl.png)
 
 ---
 
@@ -105,15 +105,7 @@ python train.py --mode random --algo rainbow --steps 50000
 
 **DuelingDQN + Target Network + Double DQN + Experience Replay Buffer + Epsilon-Greedy in PyTorch Lightning (Random Mode)**
 
-![Lightning Dueling DQN](https://github.com/user-attachments/assets/f1847258-e1dd-43d9-ae31-bc9d8f1efc6c)
-
-**引入防撞牆機制後的 loss 收斂圖**
-
-![Loss](https://github.com/user-attachments/assets/7d839774-79fb-4d05-901a-9af27d1a0217)
-
-**勝率達 98.5% 的對局統計圖**
-
-![Win rate](https://github.com/user-attachments/assets/61597840-9d43-4130-83c3-cd78f2ed7088)
+![Lightning Dueling DQN](reward_plot_double_dueling_dqn_random_pl.png)
 
 ---
 
