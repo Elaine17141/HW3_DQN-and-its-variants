@@ -57,8 +57,6 @@ python train.py --mode random --algo rainbow --steps 50000
 **3. Random Mode**
 ![Naive DQN Random](reward_plot_dqn_random_pl.png)
 
-*(註：若本地有產生 `reward_plot_static_pl.png` 亦可參考該圖)*
-
 ---
 
 ## ⚖️ HW3-2: Enhanced DQN Variants for Player Mode 
