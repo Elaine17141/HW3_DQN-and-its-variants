@@ -107,6 +107,10 @@ python train.py --mode random --algo rainbow --steps 50000
 
 ![Lightning Dueling DQN](reward_plot_double_dueling_dqn_random_pl.png)
 
+**引入防撞牆機制後的 loss 收斂圖**
+
+![Loss](loss_plot_double_dueling_dqn_random_pl.png)
+
 ---
 
 ## 🌈 HW3-4 (加分題): Rainbow DQN for Random Mode

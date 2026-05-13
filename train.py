@@ -68,3 +68,22 @@ if __name__ == "__main__":
     plt.savefig(plot_path)
     plt.close()
     print(f"Reward plot saved to {plot_path}")
+    
+    # Plot losses
+    if hasattr(agent, 'episode_losses') and len(agent.episode_losses) > 0:
+        epoch_losses = agent.episode_losses
+        plt.figure(figsize=(10, 5))
+        plt.plot(epoch_losses, color='orange')
+        plt.xlabel('Episode')
+        plt.ylabel('Average Loss')
+        plt.title(f'Loss over time ({args.mode} mode) [{args.algo}]')
+        
+        if len(epoch_losses) >= window:
+            moving_avg_loss = np.convolve(epoch_losses, np.ones(window)/window, mode='valid')
+            plt.plot(np.arange(window-1, len(epoch_losses)), moving_avg_loss, color='red', label='Moving Average')
+            plt.legend()
+            
+        loss_plot_path = f"loss_plot_{args.algo}_{args.mode}_pl.png"
+        plt.savefig(loss_plot_path)
+        plt.close()
+        print(f"Loss plot saved to {loss_plot_path}")

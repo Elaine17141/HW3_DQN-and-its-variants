@@ -64,6 +64,9 @@ class GridWorldAgent(pl.LightningModule):
         self.state = get_state(self.env)
         self.episode_reward = 0
         self.episode_rewards = []
+        self.episode_loss_sum = 0
+        self.episode_loss_count = 0
+        self.episode_losses = []
         self.moves = 0
         self.max_moves = 50
         
@@ -128,6 +131,14 @@ class GridWorldAgent(pl.LightningModule):
             self.episode_rewards.append(self.episode_reward)
             self.log('episode_reward', self.episode_reward, prog_bar=True)
             self.episode_reward = 0
+            
+            if getattr(self, 'episode_loss_count', 0) > 0:
+                self.episode_losses.append(self.episode_loss_sum / self.episode_loss_count)
+            else:
+                self.episode_losses.append(0.0)
+            self.episode_loss_sum = 0
+            self.episode_loss_count = 0
+            
             self.moves = 0
             self.env = Gridworld(size=4, mode=self.mode)
             self.state = get_state(self.env)
@@ -165,6 +176,10 @@ class GridWorldAgent(pl.LightningModule):
         
         loss = self.loss_fn(X, Y)
         self.log('train_loss', loss, prog_bar=True)
+        
+        self.episode_loss_sum += loss.item()
+        self.episode_loss_count += 1
+        
         return loss
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
