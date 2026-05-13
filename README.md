@@ -105,9 +105,13 @@ python train.py --mode random --algo rainbow --steps 50000
 
 ![Lightning Dueling DQN](reward_plot_double_dueling_dqn_random_pl.png)
 
-**引入防撞牆機制後的 loss 收斂圖**
+**引入防撞牆機制後的 Loss 收斂圖比較**
 
-![Loss](loss_plot_double_dueling_dqn_random_pl.png)
+* **Naive DQN (缺乏穩定機制，Loss 震盪較為劇烈)**:
+![Naive DQN Random Loss](loss_plot_dqn_random_pl.png)
+
+* **Double Dueling DQN (引入各項改良架構後，Loss 穩定下降)**:
+![Double Dueling DQN Random Loss](loss_plot_double_dueling_dqn_random_pl.png)
 
 ---
 
