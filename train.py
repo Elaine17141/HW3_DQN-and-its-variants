@@ -49,20 +49,24 @@ if __name__ == "__main__":
     torch.save(agent.main_net.state_dict(), model_path)
     print(f"Model saved to {model_path}")
     
+    if args.algo == 'double_dueling_dqn':
+        title_algo = 'Dueling Double DQN'
+    elif args.algo == 'dueling_dqn':
+        title_algo = 'Dueling DQN'
+    elif args.algo == 'double_dqn':
+        title_algo = 'Double DQN'
+    elif args.algo == 'rainbow':
+        title_algo = 'Rainbow DQN'
+    else:
+        title_algo = 'Naive DQN'
+
     # Plot rewards
     epoch_rewards = agent.episode_rewards
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(10, 7))
     plt.plot(epoch_rewards)
-    plt.xlabel('Episode')
-    plt.ylabel('Total Reward')
-    plt.title(f'Reward over time ({args.mode} mode) [{args.algo}]')
-    
-    # Optional: Plot moving average for better visualization
-    window = 50
-    if len(epoch_rewards) >= window:
-        moving_avg = np.convolve(epoch_rewards, np.ones(window)/window, mode='valid')
-        plt.plot(np.arange(window-1, len(epoch_rewards)), moving_avg, color='red', label='Moving Average')
-        plt.legend()
+    plt.xlabel("Epochs", fontsize=11)
+    plt.ylabel("Total Reward", fontsize=11)
+    plt.title(f"{title_algo} Training Reward", fontsize=13)
         
     plot_path = f"reward_plot_{args.algo}_{args.mode}_pl.png"
     plt.savefig(plot_path)
@@ -72,16 +76,11 @@ if __name__ == "__main__":
     # Plot losses
     if hasattr(agent, 'episode_losses') and len(agent.episode_losses) > 0:
         epoch_losses = agent.episode_losses
-        plt.figure(figsize=(10, 5))
-        plt.plot(epoch_losses, color='orange')
-        plt.xlabel('Episode')
-        plt.ylabel('Average Loss')
-        plt.title(f'Loss over time ({args.mode} mode) [{args.algo}]')
-        
-        if len(epoch_losses) >= window:
-            moving_avg_loss = np.convolve(epoch_losses, np.ones(window)/window, mode='valid')
-            plt.plot(np.arange(window-1, len(epoch_losses)), moving_avg_loss, color='red', label='Moving Average')
-            plt.legend()
+        plt.figure(figsize=(10, 7))
+        plt.plot(epoch_losses)
+        plt.xlabel("Epochs", fontsize=11)
+        plt.ylabel("Loss", fontsize=11)
+        plt.title(f"{title_algo} Training Loss", fontsize=13)
             
         loss_plot_path = f"loss_plot_{args.algo}_{args.mode}_pl.png"
         plt.savefig(loss_plot_path)
